@@ -1,0 +1,14 @@
+{
+  "name": "scene-tracker",
+  "version": "1.0.0",
+  "description": "Scene releases vs Rotten Tomatoes tracker",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.0",
+    "cheerio": "^1.0.0",
+    "express": "^4.19.0"
+  }
+}

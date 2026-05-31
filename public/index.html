@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scene × RT Tracker</title>
+  <style>
+    :root {
+      --bg:         #0d1117;
+      --surface:    #161b22;
+      --surface2:   #21262d;
+      --border:     #30363d;
+      --border2:    #444c56;
+      --text:       #c9d1d9;
+      --muted:      #6e7681;
+      --bright:     #f0f6fc;
+      --accent:     #58a6ff;
+      --fresh:      #3fb950;
+      --mixed:      #d29922;
+      --rotten:     #f85149;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(13,17,23,.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px 28px;
+      flex-wrap: wrap;
+    }
+
+    .logo {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--bright);
+      letter-spacing: -0.3px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .logo .x { color: var(--accent); margin: 0 2px; }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .dot-live {
+      display: inline-block;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--fresh);
+      animation: pulse 2.4s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+    .btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 5px 13px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: inherit;
+      transition: background .15s, border-color .15s;
+      white-space: nowrap;
+    }
+    .btn:hover  { background: var(--border); border-color: var(--border2); color: var(--bright); }
+    .btn:active { transform: scale(.97); }
+    .btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+    /* ── Layout ── */
+    .main {
+      max-width: 1060px;
+      margin: 0 auto;
+      padding: 24px 24px 48px;
+    }
+
+    /* ── Stats ── */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+
+    .stat-n {
+      font-size: 30px;
+      font-weight: 700;
+      color: var(--bright);
+      line-height: 1;
+    }
+
+    .stat-l {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+
+    /* ── Section headers ── */
+    .section-hd {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--bright);
+      margin-bottom: 12px;
+      margin-top: 28px;
+    }
+
+    .section-hd:first-of-type { margin-top: 0; }
+
+    .pill {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 1px 8px;
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    /* ── Match cards ── */
+    .match-list { display: grid; gap: 8px; }
+
+    .match-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      display: grid;
+      grid-template-columns: 52px 1fr auto;
+      gap: 14px;
+      align-items: center;
+      padding: 12px 16px;
+      transition: border-color .12s;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .match-card:hover { border-color: var(--border2); }
+
+    /* score badge */
+    .score {
+      width: 52px; height: 52px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      font-weight: 700;
+      flex-shrink: 0;
+      border: 1px solid;
+    }
+
+    .score-fresh  { background: rgba(63,185,80,.12);  color: var(--fresh);  border-color: rgba(63,185,80,.3);  }
+    .score-mixed  { background: rgba(210,153,34,.12); color: var(--mixed);  border-color: rgba(210,153,34,.3); }
+    .score-rotten { background: rgba(248,81,73,.12);  color: var(--rotten); border-color: rgba(248,81,73,.3);  }
+    .score-none   { background: var(--surface2);      color: var(--muted);  border-color: var(--border);       }
+
+    .card-body { min-width: 0; }
+
+    .movie-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--bright);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .movie-title a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .movie-title a:hover { color: var(--accent); text-decoration: underline; }
+
+    .release-name {
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Menlo', monospace;
+      font-size: 10.5px;
+      color: var(--muted);
+      margin-top: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .consensus {
+      font-size: 11.5px;
+      color: var(--text);
+      margin-top: 4px;
+      opacity: .7;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .card-meta {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+
+    .tag {
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    /* ── RT grid ── */
+    .rt-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 8px;
+    }
+
+    .rt-tile {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 10px 12px;
+      transition: border-color .12s;
+    }
+
+    .rt-tile:hover { border-color: var(--border2); }
+
+    .rt-tile-title {
+      font-size: 12.5px;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .rt-tile-score {
+      font-size: 11.5px;
+      font-weight: 600;
+      margin-top: 3px;
+    }
+
+    .c-fresh  { color: var(--fresh);  }
+    .c-mixed  { color: var(--mixed);  }
+    .c-rotten { color: var(--rotten); }
+    .c-none   { color: var(--muted);  }
+
+    /* ── Unmatched ── */
+    .release-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 6px;
+    }
+
+    .release-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 10.5px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── Error banner ── */
+    .error-box {
+      background: rgba(248,81,73,.08);
+      border: 1px solid rgba(248,81,73,.25);
+      border-radius: 8px;
+      padding: 12px 16px;
+      color: var(--rotten);
+      font-size: 13px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    /* ── States ── */
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 80px 24px;
+      color: var(--muted);
+    }
+
+    .spinner {
+      width: 30px; height: 30px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty { padding: 32px; text-align: center; color: var(--muted); }
+
+    /* ── Details toggle ── */
+    details > summary {
+      cursor: pointer;
+      list-style: none;
+      color: var(--muted);
+      font-size: 12px;
+      padding: 10px 0 4px;
+      user-select: none;
+    }
+
+    details > summary::before { content: '▶ '; font-size: 10px; }
+    details[open] > summary::before { content: '▼ '; }
+
+    /* ── Countdown ── */
+    #countdown { font-variant-numeric: tabular-nums; }
+
+    @media (max-width: 600px) {
+      header { padding: 10px 16px; }
+      .main  { padding: 16px 14px 40px; }
+      .match-card { grid-template-columns: 44px 1fr; }
+      .card-meta  { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">🎬 Scene <span class="x">×</span> RT Tracker</div>
+    <div class="header-right">
+      <span class="dot-live"></span>
+      <span id="last-updated">–</span>
+      <span>Refresh: <span id="countdown">–</span></span>
+      <button class="btn" id="refresh-btn" onclick="load(true)">↺ Nu vernieuwen</button>
+    </div>
+  </header>
+
+  <div class="main" id="app">
+    <div class="loading"><div class="spinner"></div><span>Data ophalen…</span></div>
+  </div>
+
+  <script>
+    let refreshTimer   = null;
+    let countdownTimer = null;
+    let nextAt         = null;
+
+    // Use /api/check when running locally with the Express server,
+    // otherwise load static data.json (GitHub Actions / burobeunk.nl).
+    const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+    const DATA_URL = IS_LOCAL ? '/api/check' : './data.json';
+    const FORCE_URL = IS_LOCAL ? '/api/check?force=1' : null;
+
+    async function load(force = false) {
+      const btn = document.getElementById('refresh-btn');
+
+      if (!IS_LOCAL) {
+        // On static hosting: just reload data.json (cache-bust with timestamp)
+        btn.disabled = true;
+        btn.textContent = '↺ Laden…';
+        document.getElementById('app').innerHTML =
+          '<div class="loading"><div class="spinner"></div><span>Data ophalen…</span></div>';
+        try {
+          const r    = await fetch('./data.json?t=' + Date.now());
+          const data = await r.json();
+          render(data);
+          scheduleNextRefresh(data);
+        } catch (e) {
+          document.getElementById('app').innerHTML =
+            `<div class="error-box">⚠ Kan data niet ophalen: ${esc(e.message)}</div>`;
+        } finally {
+          btn.disabled    = false;
+          btn.textContent = '↺ Vernieuwen';
+        }
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = '↺ Laden…';
+
+      if (force) {
+        document.getElementById('app').innerHTML =
+          '<div class="loading"><div class="spinner"></div><span>Data ophalen…</span></div>';
+      }
+
+      try {
+        const url  = force ? FORCE_URL : DATA_URL;
+        const r    = await fetch(url);
+        const data = await r.json();
+        render(data);
+        scheduleNextRefresh(data);
+      } catch (e) {
+        document.getElementById('app').innerHTML =
+          `<div class="error-box">⚠ Kan data niet ophalen: ${esc(e.message)}</div>`;
+      } finally {
+        btn.disabled    = false;
+        btn.textContent = '↺ Nu vernieuwen';
+      }
+    }
+
+    function scheduleNextRefresh(data) {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      const ageMs  = (data.cacheAgeSeconds || 0) * 1000;
+      const waitMs = Math.max(IS_LOCAL ? 10_000 : 300_000, 3_600_000 - ageMs);
+      nextAt       = Date.now() + waitMs;
+      refreshTimer = setTimeout(() => load(false), waitMs);
+      startCountdown();
+    }
+
+    function startCountdown() {
+      if (countdownTimer) clearInterval(countdownTimer);
+      countdownTimer = setInterval(() => {
+        if (!nextAt) return;
+        const ms = Math.max(0, nextAt - Date.now());
+        const m  = Math.floor(ms / 60_000);
+        const s  = Math.floor((ms % 60_000) / 1000);
+        document.getElementById('countdown').textContent =
+          String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+      }, 1000);
+    }
+
+    function scoreCls(n) {
+      if (n === null || n === undefined) return 'none';
+      if (n >= 60) return 'fresh';
+      if (n >= 40) return 'mixed';
+      return 'rotten';
+    }
+
+    function scoreLabel(n) {
+      if (n === null || n === undefined) return '?';
+      return n + '%';
+    }
+
+    function fmtDate(iso) {
+      if (!iso) return '–';
+      return new Date(iso).toLocaleString('nl-NL', {
+        day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+      });
+    }
+
+    function esc(s) {
+      return String(s || '')
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function render(data) {
+      const { matched=[], unmatchedReleases=[], allRtMovies=[], stats={}, errors={}, fetchedAt } = data;
+      let html = '';
+
+      // Errors
+      if (errors.predb || errors.rt) {
+        html += '<div class="error-box">';
+        if (errors.predb) html += `<div>⚠ predb.net: ${esc(errors.predb)}</div>`;
+        if (errors.rt)    html += `<div>⚠ Rotten Tomatoes: ${esc(errors.rt)}</div>`;
+        html += '</div>';
+      }
+
+      // Stats
+      html += `
+        <div class="stats">
+          <div class="stat"><div class="stat-n">${stats.sceneTotal??0}</div><div class="stat-l">Scene releases</div></div>
+          <div class="stat"><div class="stat-n">${stats.rtTotal??0}</div><div class="stat-l">RT films</div></div>
+          <div class="stat"><div class="stat-n">${stats.matchedCount??0}</div><div class="stat-l">Matches</div></div>
+        </div>`;
+
+      // Matches
+      html += `<div class="section-hd">🎯 Scene-releases op RT <span class="pill">${matched.length}</span></div>`;
+
+      if (matched.length === 0) {
+        html += '<div class="empty">Geen matches gevonden — zijn er al nieuwe pre-releases?</div>';
+      } else {
+        html += '<div class="match-list">';
+        for (const { release, movie } of matched) {
+          const cls  = scoreCls(movie.score);
+          const href = movie.url ? `href="${esc(movie.url)}" target="_blank" rel="noopener"` : '';
+          html += `
+            <div class="match-card">
+              <div class="score score-${cls}">${scoreLabel(movie.score)}</div>
+              <div class="card-body">
+                <div class="movie-title">
+                  ${movie.url
+                    ? `<a ${href}>${esc(movie.title)}</a>`
+                    : esc(movie.title)}
+                  ${movie.year ? `<span style="font-weight:400;color:var(--muted);font-size:13px"> (${movie.year})</span>` : ''}
+                </div>
+                <div class="release-name" title="${esc(release.raw)}">${esc(release.raw)}</div>
+                ${movie.consensus ? `<div class="consensus">${esc(movie.consensus)}</div>` : ''}
+              </div>
+              <div class="card-meta">
+                ${release.year ? `<span class="tag">${release.year}</span>` : ''}
+                <span class="tag c-${cls}">${scoreLabel(movie.score)} RT</span>
+              </div>
+            </div>`;
+        }
+        html += '</div>';
+      }
+
+      // All RT movies
+      if (allRtMovies.length > 0) {
+        html += `
+          <div class="section-hd" style="margin-top:36px">
+            🍅 Alle actuele RT-films
+            <span class="pill">${allRtMovies.length}</span>
+          </div>
+          <div class="rt-grid">`;
+        for (const m of allRtMovies.slice(0, 40)) {
+          const cls = scoreCls(m.score);
+          html += `
+            <div class="rt-tile">
+              <div class="rt-tile-title" title="${esc(m.title)}">${esc(m.title)}</div>
+              <div class="rt-tile-score c-${cls}">${scoreLabel(m.score)}</div>
+            </div>`;
+        }
+        html += '</div>';
+      }
+
+      // Unmatched scene releases (collapsible)
+      if (unmatchedReleases.length > 0) {
+        html += `
+          <details style="margin-top:28px">
+            <summary>Scene-releases zonder RT-match (${unmatchedReleases.length})</summary>
+            <div class="release-list" style="margin-top:8px">`;
+        for (const r of unmatchedReleases) {
+          html += `<div class="release-item" title="${esc(r.raw)}">${esc(r.raw)}</div>`;
+        }
+        html += '</div></details>';
+      }
+
+      document.getElementById('app').innerHTML = html;
+      document.getElementById('last-updated').textContent = 'Bijgewerkt: ' + fmtDate(fetchedAt);
+    }
+
+    load(false);
+  </script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+name: Scene × RT Scrape
+
+on:
+  schedule:
+    - cron: "5 * * * *"   # elk uur op :05
+  workflow_dispatch:        # ook handmatig te starten
+
+concurrency:
+  group: scene-scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Installeer dependencies
+        run: npm ci
+
+      - name: Run scraper
+        run: node scrape.js
+
+      - name: Upload naar burobeunk.nl
+        env:
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          sudo apt-get install -y lftp -q
+          lftp -u "$FTP_USER,$FTP_PASSWORD" "$FTP_HOST" << 'FTPEOF'
+          set ssl:verify-certificate no
+          set cmd:fail-exit yes
+          mkdir -fp /domains/burobeunk.nl/public_html/scene-tracker
+          cd /domains/burobeunk.nl/public_html/scene-tracker
+          put public/data.json -o data.json
+          put public/index.html -o index.html
+          bye
+          FTPEOF
